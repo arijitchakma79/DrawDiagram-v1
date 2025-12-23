@@ -1,29 +1,20 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Literal, Dict, Any, List
-from .types import ConstraintFamily
+from .types import ConstraintType
 
 class Constraint(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    
+    model_config = ConfigDict(extra="forbid")
+
     id: str
 
-    family: ConstraintFamily
-
-    description: str = Field(
-        ..., description="Human-readable rule"
+    type: ConstraintType = Field(
+        ..., description="Executable constraint type"
     )
 
-    scope: Optional[List[str]] = Field(
+    targets: Literal["node", "edge", "pair", "graph"]
+    strength: Literal["hard", "soft"] = "hard"
+
+    description: Optional[str] = Field(
         default=None,
-        description="Node or edge IDs this constraint applies to"
-    )
-
-    hard: bool = Field(
-        default=True,
-        description="Hard constraint vs soft preference"
-    )
-
-    parameters: Optional[Dict[str, str]] = Field(
-        default=None,
-        description="Constraint-specific parameters"
+        description="Human-readable explanation (non-executable)"
     )

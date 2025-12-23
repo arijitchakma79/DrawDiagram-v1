@@ -18,34 +18,12 @@ AbstractionLevel = Literal[
     "computational"
 ]
 
-NodeRole = Literal[
-    "input",
-    "intermediary",
-    "output"
+ConstraintType = Literal[
+    "presence",
+    "spatial_relation",
+    "ordering",
+    "containment",
+    "causal_validity",
+    "quantitative_relation"
 ]
 
-Importance = Literal[
-    "primary",
-    "secondary",
-    "tertiary"
-]
-
-EdgeFamily = Literal[
-    "structural",
-    "spatial",
-    "process",
-    "causal",
-    "functional",
-    "informational",
-    "temporal",
-    "quantitative"
-]
-
-ConstraintFamily = Literal[
-    "spatial",
-    "structural",
-    "process",
-    "causal",
-    "quantitative",
-    "style"
-]

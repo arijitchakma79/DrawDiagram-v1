@@ -1,31 +1,24 @@
 from .types import (
     NodeType,
     AbstractionLevel,
-    NodeRole,
-    Importance,
-    EdgeFamily,
-    ConstraintFamily,
+    ConstraintType,
 )
-from .node import Node, NodeAttributes
+from .node import Node
 from .edges import Edge, EdgeAttributes
 from .constraint import Constraint
-from .graph import DiagramGraph, DiagramMetadata
+from .graph import Graph
+from .diagram import Diagram, DiagramMetadata
 
 __all__ = [
-    # Types
     "NodeType",
     "AbstractionLevel",
-    "NodeRole",
-    "Importance",
-    "EdgeFamily",
-    "ConstraintFamily",
-    # Models
+    "ConstraintType",
     "Node",
-    "NodeAttributes",
     "Edge",
     "EdgeAttributes",
     "Constraint",
-    "DiagramGraph",
+    "Graph",
+    "Diagram",
     "DiagramMetadata",
 ]
 

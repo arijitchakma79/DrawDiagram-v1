@@ -5,6 +5,7 @@ from .models import (
     EdgesResponse,
     ConstraintForOpenAI,
     ConstraintsResponse,
+    ConstraintSchema,
 )
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "EdgesResponse",
     "ConstraintForOpenAI",
     "ConstraintsResponse",
+    "ConstraintSchema",
 ]
 

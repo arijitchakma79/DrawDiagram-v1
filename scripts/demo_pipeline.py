@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from typing import List
 
 # Silence terminal output by default
-QUIET = True
+QUIET = False
 if QUIET:
     def print(*args, **kwargs):  # type: ignore
         return None
@@ -21,8 +21,9 @@ if str(SRC_ROOT) not in sys.path:
 from diagmind.llm import parse  # noqa: E402
 from diagmind.graph import (  # noqa: E402
     Constraint,
-    DiagramGraph,
+    Diagram,
     DiagramMetadata,
+    Graph,
 )
 from diagmind.utils import (  # noqa: E402
     load_prompt,
@@ -30,6 +31,7 @@ from diagmind.utils import (  # noqa: E402
     NodesResponse,
     EdgesResponse,
     ConstraintsResponse,
+    ConstraintSchema,
 )
 
 # Load environment variables from .env file
@@ -44,219 +46,91 @@ constraint_prompt = load_prompt("constraint.txt")
 
 # Input data
 inputs = {
-    "Scientific topic": "Life Cycle of Butterfly",
-    "Audience": "Middle School",
-    "Purpose": "Show the life cycle of a butterfly",
-    "Desired detail level": "medium"
+  "topic": "Solar System",
+  "audience": "Middle School",
+  "purpose": "Draw the diagram"
 }
 
-# Format the user prompt with the input data
-user_prompt = f"""Scientific topic: {inputs['Scientific topic']}
-Audience: {inputs['Audience']}
-Purpose: {inputs['Purpose']}
-Desired detail level: {inputs['Desired detail level']}"""
+# Print diagram intent
+user_prompt = f"""Topic: {inputs['topic']}
+Audience: {inputs['audience']}
+Purpose: {inputs['purpose']}"""
 
-# Step 1: Infer diagram intent
-print("="*50)
-print("Step 1: Inferring diagram intent...")
-print("="*50)
-diagram_intent_obj = parse(
+print("Getting diagram intent...")
+diagram_intent = parse(
     system_prompt=diagram_intent_prompt,
     user_prompt=user_prompt,
     response_format=DiagramIntent,
-    model="gpt-4.1-2025-04-14",
-    temperature=1,
 )
 
-diagram_intent = diagram_intent_obj.model_dump()
-print("\nParsed Diagram Intent:")
-print(json.dumps(diagram_intent, indent=2))
+print("\nDiagram Intent:")
+print(json.dumps(diagram_intent.model_dump(), indent=2))
 
-# Initialize the graph with metadata
-metadata = DiagramMetadata(
-    topic=inputs["Scientific topic"],
-    audience=inputs["Audience"],
-    purpose=inputs["Purpose"],
-    detail_level=inputs["Desired detail level"],
-    intent=diagram_intent,
+# Generate nodes
+node_user_prompt = f"""Topic: {inputs['topic']}
+Audience: {inputs['audience']}
+Purpose: {inputs['purpose']}
+
+Diagram Intent:
+- Domain: {diagram_intent.domain}
+- Diagram Family: {diagram_intent.diagram_family}
+- Abstraction Levels: {', '.join(diagram_intent.abstraction_levels)}
+- Expected Flow: {diagram_intent.expected_flow or 'N/A'}"""
+
+print("\nGenerating nodes...")
+nodes_response = parse(
+    system_prompt=node_enumeration_prompt,
+    user_prompt=node_user_prompt,
+    response_format=NodesResponse,
 )
-graph = DiagramGraph(metadata=metadata)
 
-# Step 2: Enumerate nodes using the diagram intent
-if graph is not None:
-    print("\n" + "="*50)
-    print("Step 2: Enumerating nodes...")
-    print("="*50)
-    
-    # Create prompt for node enumeration with topic and diagram intent
-    node_prompt = f"""Scientific topic: {inputs['Scientific topic']}
-Audience: {inputs['Audience']}
-Purpose: {inputs['Purpose']}
-Desired detail level: {inputs['Desired detail level']}
+print(f"\nGenerated {len(nodes_response.nodes)} nodes:")
+for node in nodes_response.nodes:
+    print(f"  - {node.label} [{node.id}] (type: {node.type})")
 
-Inferred diagram intent:
-{json.dumps(diagram_intent, indent=2)}"""
-    
-    # Call LLM with structured output using parse()
-    nodes_result = parse(
-        system_prompt=node_enumeration_prompt,
-        user_prompt=node_prompt,
-        response_format=NodesResponse,
-        model="gpt-4.1-2025-04-14",
-        temperature=1,
-    )
-    
-    print("\nNodes Result:")
-    result_dict = nodes_result.model_dump()
-    print(json.dumps(result_dict, indent=2, default=str))
-    
-    print(f"\nTotal nodes enumerated: {len(nodes_result.nodes)}")
-    # Add nodes to the graph
-    graph.add_nodes(nodes_result.nodes)
+# Create graph with nodes first
+graph = Graph()
+graph.add_nodes(nodes_response.nodes)
 
-    for i, node in enumerate(nodes_result.nodes, 1):
-        print(f"\n  {i}. {node.label} ({node.type})")
-        print(f"     ID: {node.id}")
-        print(f"     Role: {node.attributes.role}")
-    
-    # Step 3: Construct edges using the enumerated nodes
-    print("\n" + "="*50)
-    print("Step 3: Constructing edges...")
-    print("="*50)
-    
-    # Create prompt for edge construction with topic, diagram intent, and nodes
-    edge_prompt = f"""Scientific topic: {inputs['Scientific topic']}
-Audience: {inputs['Audience']}
-Purpose: {inputs['Purpose']}
-Desired detail level: {inputs['Desired detail level']}
+# Generate edges
+edge_user_prompt = f"""Topic: {inputs['topic']}
+Audience: {inputs['audience']}
+Purpose: {inputs['purpose']}
 
-Inferred diagram intent:
-{json.dumps(diagram_intent, indent=2)}
+Diagram Intent:
+- Domain: {diagram_intent.domain}
+- Diagram Family: {diagram_intent.diagram_family}
+- Abstraction Levels: {', '.join(diagram_intent.abstraction_levels)}
+- Expected Flow: {diagram_intent.expected_flow or 'N/A'}
 
-Enumerated nodes:
-{json.dumps([node.model_dump() for node in nodes_result.nodes], indent=2)}"""
-    
-    # Call LLM with structured output using parse()
-    edges_result = parse(
-        system_prompt=edge_construction_prompt,
-        user_prompt=edge_prompt,
-        response_format=EdgesResponse,
-        model="gpt-4.1-2025-04-14",
-        temperature=1,
-    )
-    
-    print("\nEdges Result:")
-    edges_dict = edges_result.model_dump()
-    print(json.dumps(edges_dict, indent=2, default=str))
-    
-    # Add edges to the graph
-    graph.add_edges(edges_result.edges)
+{graph.to_llm_format()}
 
-    print(f"\nTotal edges constructed: {len(edges_result.edges)}")
-    for i, edge in enumerate(edges_result.edges, 1):
-        print(f"\n  {i}. {edge.source} --[{edge.operator}]--> {edge.target}")
-        print(f"     Family: {edge.family}")
-        print(f"     Directional: {edge.attributes.directional}")
-        if edge.attributes.polarity:
-            print(f"     Polarity: {edge.attributes.polarity}")
-    
-    # Step 4: Generate constraints using nodes and edges
-    print("\n" + "="*50)
-    print("Step 4: Generating constraints...")
-    print("="*50)
-    
-    # Create prompt for constraint generation with topic, diagram intent, nodes, and edges
-    constraint_prompt_text = f"""Scientific topic: {inputs['Scientific topic']}
-Audience: {inputs['Audience']}
-Purpose: {inputs['Purpose']}
-Desired detail level: {inputs['Desired detail level']}
+Connect the nodes above with appropriate relationships. Use the node IDs for source and target."""
 
-Inferred diagram intent:
-{json.dumps(diagram_intent, indent=2)}
+print("\nGenerating edges...")
+edges_response = parse(
+    system_prompt=edge_construction_prompt,
+    user_prompt=edge_user_prompt,
+    response_format=EdgesResponse,
+)
 
-Enumerated nodes:
-{json.dumps([node.model_dump() for node in nodes_result.nodes], indent=2)}
+print(f"\nGenerated {len(edges_response.edges)} edges:")
+for edge in edges_response.edges:
+    polarity_str = f", polarity={edge.attributes.polarity}" if edge.attributes and edge.attributes.polarity else ""
+    strength_str = f", strength={edge.attributes.strength}" if edge.attributes and edge.attributes.strength else ""
+    print(f"  - {edge.source} --({edge.operator}{strength_str}{polarity_str})--> {edge.target}")
 
-Constructed edges:
-{json.dumps([edge.model_dump() for edge in edges_result.edges], indent=2)}"""
-    
-    # Call LLM with structured output using parse()
-    constraints_result = parse(
-        system_prompt=constraint_prompt,
-        user_prompt=constraint_prompt_text,
-        response_format=ConstraintsResponse,
-        model="gpt-4.1-2025-04-14",
-        temperature=1,
-    )
-    
-    print("\nConstraints Result:")
-    constraints_dict = constraints_result.model_dump()
-    print(json.dumps(constraints_dict, indent=2, default=str))
-    
-    # Convert constraints into our core Constraint model and add to graph
-    core_constraints = [
-        Constraint(
-            id=c.id,
-            family=c.family,
-            description=c.description,
-            scope=c.scope,
-            hard=c.hard,
-            parameters=c.parameters,
-        )
-        for c in constraints_result.constraints
-    ]
-    graph.add_constraints(core_constraints)
+# Add edges to graph
+graph.add_edges(edges_response.edges)
 
-    print(f"\nTotal constraints generated: {len(core_constraints)}")
-    for i, constraint in enumerate(core_constraints, 1):
-        print(f"\n  {i}. [{constraint.family}] {constraint.description}")
-        print(f"     ID: {constraint.id}")
-        print(f"     Hard: {constraint.hard}")
-        if constraint.scope:
-            print(f"     Scope: {constraint.scope}")
+print(f"Graph created with {len(graph.nodes)} nodes and {len(graph.edges)} edges")
 
-    # Final graph summary
-    print("\n" + "=" * 50)
-    print("Final graph summary")
-    print("=" * 50)
-    print(json.dumps(graph.summary(), indent=2, default=str))
+# Save visualization
+output_dir = PROJECT_ROOT / "output"
+output_dir.mkdir(exist_ok=True)
+output_file = output_dir / f"{inputs['topic'].lower().replace(' ', '_')}_graph.png"
 
-    # Human-readable connections and constraints
-    print("\n" + "=" * 50)
-    print("Graph connections")
-    print("=" * 50)
-    print(graph.pretty_connections())
+print(f"\nVisualizing and saving graph to {output_file}...")
+saved_path = graph.visualize(output_file)
+print(f"Graph saved to: {saved_path}")
 
-    print("\n" + "=" * 50)
-    print("Graph constraints")
-    print("=" * 50)
-    print(graph.pretty_constraints())
-
-    # Persist artifacts (JSON + PNG) into runs/
-    runs_dir = PROJECT_ROOT / "runs"
-    runs_dir.mkdir(exist_ok=True)
-    run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-    base_path = runs_dir / f"run-{run_id}"
-
-    # Save full graph payload as JSON
-    graph_payload = {
-        "inputs": inputs,
-        "diagram_intent": diagram_intent,
-        "graph": graph.to_dict(),
-    }
-    json_path = base_path.with_suffix(".json")
-    json_path.write_text(json.dumps(graph_payload, indent=2, default=str))
-    print(f"\nSaved graph JSON -> {json_path}")
-
-    # Save rendered graph as PNG (if graphviz is available)
-    png_path = base_path.with_suffix(".png")
-    try:
-        rendered_path = graph.visualize_graph(png_path)
-        print(f"Saved graph PNG  -> {rendered_path}")
-    except ImportError:
-        print(
-            "Graphviz not installed; skipped PNG render. "
-            "Install with `pip install graphviz` and ensure Graphviz binaries are available."
-        )
-else:
-    print("\nSkipping node enumeration due to diagram intent parsing error.")

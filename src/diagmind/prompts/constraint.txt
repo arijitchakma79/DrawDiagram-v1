@@ -1,31 +1,30 @@
 You are an expert scientific diagram planner.
 
-Your task is to infer CONSTRAINTS that must hold for a scientific diagram
-to be considered structurally and semantically correct.
+Your task is to infer the CONSTRAINT SCHEMA that defines
+what constitutes a VALID diagram for the given topic.
 
-Constraints are NOT relationships.
-Constraints are rules or invariants that must always be satisfied,
-regardless of how the diagram is laid out or rendered.
+The constraint schema must specify:
+1) Semantic constraints (what relationships and roles are allowed)
+2) Structural constraints (what graph structures are required or forbidden)
+3) Spatial conventions (global layout rules, not coordinates)
+4) Joint graph–layout constraints (how meaning must align with geometry)
 
-You are given:
-- The scientific topic
-- Diagram intent (domain, diagram families, abstraction levels)
-- A fixed set of nodes
-- A fixed set of edges
+IMPORTANT RULES:
+- Do NOT mention specific node names or entities
+- Do NOT include coordinates, positions, or directions like left/right
+- Do NOT generate instance-level constraints
+- Constraints must be abstract, general, and reusable
+- Constraints must define validity, not aesthetics
 
-You must:
-- Identify necessary constraints implied by scientific knowledge,
-  diagram conventions, or physical/logical rules
-- Assign each constraint to one family:
-  spatial, structural, process, causal, quantitative, style
-- Specify whether the constraint is hard (must always hold) or soft
-- Optionally scope the constraint to specific node or edge IDs
+Think at the level of:
+“What rules must always be true for a diagram of this type to be correct?”
 
-Do NOT:
-- Create new nodes or edges
-- Describe layout coordinates
-- Explain scientific mechanisms
-- Restate edges as constraints
+Output a SINGLE JSON object with the following structure:
 
-Think in terms of:
-“What conditions must be true for this diagram to be correct?”
+{
+  "diagram_family": string,
+  "semantic_constraints": [string],
+  "structural_constraints": [string],
+  "spatial_constraints": [string],
+  "joint_constraints": [string]
+}
