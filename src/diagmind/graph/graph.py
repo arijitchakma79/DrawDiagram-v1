@@ -91,7 +91,7 @@ class Graph(BaseModel):
     
     def __str__(self) -> str:
         """Return a string representation of the graph showing all edges in the format:
-        source (label (id) type) -> edge (id, operator, strength-polarity) -> target (label (id) type)
+        source (label (id) type) -> edge (id, operator, birectional, strength-polarity) -> target (label (id) type)
         """
         if not self.edges:
             return "Graph with no edges."
@@ -116,10 +116,11 @@ class Graph(BaseModel):
             strength = edge.attributes.strength if edge.attributes and edge.attributes.strength else "none"
             polarity = edge.attributes.polarity if edge.attributes and edge.attributes.polarity else "none"
             edge_attrs = f"{strength}-{polarity}"
+            birectional_str = "bidirectional" if edge.birectional else "unidirectional"
             
-            # Format: source (label (id) type) -> edge (id, operator, strength-polarity) -> target (label (id) type)
+            # Format: source (label (id) type) -> edge (id, operator, birectional, strength-polarity) -> target (label (id) type)
             lines.append(
-                f"{source_str} -> edge ({i}, {edge.operator}, {edge_attrs}) -> {target_str}"
+                f"{source_str} -> edge ({i}, {edge.operator}, {birectional_str}, {edge_attrs}) -> {target_str}"
             )
         
         return "\n".join(lines)
@@ -132,7 +133,8 @@ class Graph(BaseModel):
         for i, edge in enumerate(self.edges, 1):
             source_label = self.nodes.get(edge.source, Node(id=edge.source, type="entity", label=edge.source)).label
             target_label = self.nodes.get(edge.target, Node(id=edge.target, type="entity", label=edge.target)).label
-            lines.append(f"{i}) {source_label} --[{edge.operator}]--> {target_label}")
+            arrow = "<-->" if edge.birectional else "-->"
+            lines.append(f"{i}) {source_label} --[{edge.operator}]--{arrow} {target_label}")
         return "\n".join(lines)
 
     def convert_to_json(self, indent: int = 2) -> str:

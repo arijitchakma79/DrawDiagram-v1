@@ -11,4 +11,5 @@ class Edge(BaseModel):
     operator: str = Field(
         ..., description="Semantic operator (e.g., causes, flows_to)"
     )
+    birectional: bool = False
     attributes: Optional[EdgeAttributes] = None
