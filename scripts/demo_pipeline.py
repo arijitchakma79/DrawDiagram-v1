@@ -54,7 +54,7 @@ layout_generator_prompt = load_prompt("layout_generator.txt")
 inputs = {
   "topic": "Photosynthesis",
   "audience": "Middle School",
-  "purpose": "Explain the higher level process including higher level objects such as Leaves, plants etc"
+  "purpose": "Explain the higher level process including higher level objects such as Leaves, plants, sun. Don't go into small details"
 }
 
 # Print diagram intent
